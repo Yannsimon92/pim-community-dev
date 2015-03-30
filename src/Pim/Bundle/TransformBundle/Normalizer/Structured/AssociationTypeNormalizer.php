@@ -17,7 +17,7 @@ class AssociationTypeNormalizer implements NormalizerInterface
     /**
      * @var array $supportedFormats
      */
-    protected $supportedFormats = array('json', 'xml');
+    protected $supportedFormats = ['json', 'xml', 'internal_api'];
 
     /**
      * @var TranslationNormalizer $transNormalizer
@@ -39,9 +39,15 @@ class AssociationTypeNormalizer implements NormalizerInterface
      */
     public function normalize($object, $format = null, array $context = array())
     {
-        return array(
+        $result = [
             'code'  => $object->getCode()
-        ) + $this->transNormalizer->normalize($object, $format, $context);
+        ] + $this->transNormalizer->normalize($object, $format, $context);
+
+        if ('internal_api' === $format) {
+            $result['id'] = $object->getId();
+        }
+
+        return $result;
     }
 
     /**
