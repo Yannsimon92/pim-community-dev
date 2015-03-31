@@ -3,6 +3,7 @@
 namespace Pim\Bundle\EnrichBundle\Form\Type\MassEditAction;
 
 use Pim\Bundle\CatalogBundle\Helper\LocaleHelper;
+use Pim\Bundle\CatalogBundle\Repository\AttributeRepositoryInterface;
 use Pim\Bundle\EnrichBundle\Form\View\ProductFormViewInterface;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\FormBuilderInterface;
@@ -34,25 +35,31 @@ class EditCommonAttributesType extends AbstractType
     /** @var string */
     protected $dataClass;
 
+    /** @var AttributeRepositoryInterface */
+    protected $attributeRepository;
+
     /**
-     * @param ProductFormViewInterface $productFormView
-     * @param LocaleHelper             $localeHelper
-     * @param string                   $attributeClass
-     * @param string                   $localeClassName
-     * @param string                   $dataClass
+     * @param ProductFormViewInterface     $productFormView
+     * @param AttributeRepositoryInterface $attributeRepository
+     * @param LocaleHelper                 $localeHelper
+     * @param string                       $attributeClass
+     * @param string                       $localeClassName
+     * @param string                       $dataClass
      */
     public function __construct(
         ProductFormViewInterface $productFormView,
+        AttributeRepositoryInterface $attributeRepository,
         LocaleHelper $localeHelper,
         $attributeClass,
         $localeClassName,
         $dataClass
     ) {
-        $this->productFormView = $productFormView;
-        $this->localeHelper    = $localeHelper;
-        $this->attributeClass  = $attributeClass;
-        $this->localeClassName = $localeClassName;
-        $this->dataClass       = $dataClass;
+        $this->productFormView     = $productFormView;
+        $this->attributeRepository = $attributeRepository;
+        $this->localeHelper        = $localeHelper;
+        $this->attributeClass      = $attributeClass;
+        $this->localeClassName     = $localeClassName;
+        $this->dataClass           = $dataClass;
     }
 
     /**
@@ -65,7 +72,7 @@ class EditCommonAttributesType extends AbstractType
                 'values',
                 'pim_enrich_localized_collection',
                 [
-                    'type' => 'pim_product_value',
+                    'type'               => 'pim_product_value',
                     'allow_add'          => false,
                     'allow_delete'       => true,
                     'by_reference'       => false,
@@ -77,10 +84,10 @@ class EditCommonAttributesType extends AbstractType
                 'locale',
                 'entity',
                 [
-                    'choices' => $options['locales'],
-                    'class'   => $this->localeClassName,
-                    'select2' => true,
-                    'attr'    => [
+                    'choices'   => $options['locales'],
+                    'class'     => $this->localeClassName,
+                    'select2'   => true,
+                    'attr'      => [
                         'class' => 'operation-param',
                     ]
                 ]
@@ -118,12 +125,27 @@ class EditCommonAttributesType extends AbstractType
     {
         $resolver->setDefaults(
             [
-                'data_class' => $this->dataClass,
-                'locales' => [],
-                'common_attributes' => [],
+                'data_class'        => $this->dataClass,
+                'locales'           => [],
+                'common_attributes' => $this->attributeRepository->findAll(),
                 'current_locale'    => null
             ]
         );
+    }
+
+    /**
+     * Initializes self::commonAtributes with values from the repository
+     * Attribute is not available for mass editing if:
+     *   - it is an identifier
+     *   - it is unique
+     *   - without value AND not link to family
+     *   - is not common to every products
+     *
+     * @return array
+     */
+    public function getCommonAttributes()
+    {
+        return ;
     }
 
     /**

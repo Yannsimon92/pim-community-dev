@@ -2,18 +2,8 @@
 
 namespace Pim\Bundle\EnrichBundle\MassEditAction\Operation;
 
-use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
-use Pim\Bundle\CatalogBundle\Builder\ProductBuilder;
-use Pim\Bundle\CatalogBundle\Context\CatalogContext;
-use Pim\Bundle\CatalogBundle\Manager\ProductMassActionManager;
-use Pim\Bundle\CatalogBundle\Model\AttributeInterface;
-use Pim\Bundle\CatalogBundle\Model\LocaleInterface;
 use Pim\Bundle\CatalogBundle\Model\ProductInterface;
-use Pim\Bundle\CatalogBundle\Model\ProductValueInterface;
-use Pim\Bundle\CatalogBundle\Updater\ProductUpdaterInterface;
-use Pim\Bundle\UserBundle\Context\UserContext;
-use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 
 /**
  * Edit common attributes of given products
@@ -22,76 +12,12 @@ use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
  * @copyright 2013 Akeneo SAS (http://www.akeneo.com)
  * @license   http://opensource.org/licenses/osl-3.0.php  Open Software License (OSL 3.0)
  */
-class EditCommonAttributes extends AbstractMassEditOperation
+class EditCommonAttributes extends AbstractMassEditOperation implements
+    ConfigurableOperationInterface,
+    BatchableOperationInterface
 {
-    /** @var ArrayCollection|ProductValueInterface[] */
+    /** @var ProductInterface */
     protected $values;
-
-    /** @var ArrayCollection */
-    protected $displayedAttributes;
-
-    /** @var LocaleInterface */
-    protected $locale;
-
-    /** @var ProductBuilder */
-    protected $productBuilder;
-
-    /** @var ProductMassActionManager */
-    protected $massActionManager;
-
-    /** @var UserContext */
-    protected $userContext;
-
-    /** @var CatalogContext */
-    protected $catalogContext;
-
-    /** @var array */
-    protected $commonAttributes;
-
-    /** @var array */
-    protected $warningMessages;
-
-    /** @var ProductUpdaterInterface */
-    protected $productUpdater;
-
-    /** @var NormalizerInterface */
-    protected $normalizer;
-
-    /**
-     * Constructor
-     *
-     * @param ProductBuilder           $productBuilder
-     * @param ProductUpdaterInterface  $productUpdater
-     * @param UserContext              $userContext
-     * @param CatalogContext           $catalogContext
-     * @param ProductMassActionManager $massActionManager
-     * @param NormalizerInterface      $normalizer
-     */
-    public function __construct(
-        ProductBuilder $productBuilder,
-        ProductUpdaterInterface $productUpdater,
-        UserContext $userContext,
-        CatalogContext $catalogContext,
-        ProductMassActionManager $massActionManager,
-        NormalizerInterface $normalizer
-    ) {
-        $this->productBuilder      = $productBuilder;
-        $this->productUpdater      = $productUpdater;
-        $this->userContext         = $userContext;
-        $this->catalogContext      = $catalogContext;
-        $this->massActionManager   = $massActionManager;
-        $this->displayedAttributes = new ArrayCollection();
-        $this->values              = new ArrayCollection();
-        $this->normalizer          = $normalizer;
-    }
-
-    /**
-     * {@inheritdoc}
-     */
-    public function affectsCompleteness()
-    {
-        return true;
-    }
 
     /**
      * Set values
@@ -118,58 +44,6 @@ class EditCommonAttributes extends AbstractMassEditOperation
     }
 
     /**
-     * Set locale
-     *
-     * @param LocaleInterface $locale
-     *
-     * @return EditCommonAttributes
-     */
-    public function setLocale(LocaleInterface $locale)
-    {
-        $this->locale = $locale;
-
-        return $this;
-    }
-
-    /**
-     * Get locale
-     *
-     * @return LocaleInterface
-     */
-    public function getLocale()
-    {
-        if ($this->locale instanceof LocaleInterface) {
-            return $this->locale;
-        }
-
-        return $this->userContext->getCurrentLocale();
-    }
-
-    /**
-     * Set displayed attributes
-     *
-     * @param Collection $displayedAttributes
-     *
-     * @return EditCommonAttributes
-     */
-    public function setDisplayedAttributes(Collection $displayedAttributes)
-    {
-        $this->displayedAttributes = $displayedAttributes;
-
-        return $this;
-    }
-
-    /**
-     * Get displayed attributes
-     *
-     * @return Collection
-     */
-    public function getDisplayedAttributes()
-    {
-        return $this->displayedAttributes;
-    }
-
-    /**
      * {@inheritdoc}
      */
     public function getFormType()
@@ -178,196 +52,62 @@ class EditCommonAttributes extends AbstractMassEditOperation
     }
 
     /**
-     * Get form options
-     *
-     * @return array
+     * {@inheritdoc}
      */
-    public function getFormOptions()
+    public function getAlias()
+    {
+        return 'edit-common-attributes';
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function getActions()
     {
         return [
-            'locales'           => $this->userContext->getUserLocales(),
-            'common_attributes' => $this->getCommonAttributes(),
-            'current_locale'    => $this->getLocale()->getCode()
+            [
+                'field' => 'attribute',
+                'value' => $this->getAttrbibute()->getCode(),
+            ]
         ];
     }
 
     /**
      * {@inheritdoc}
      */
-    public function initialize()
+    public function getBatchConfig()
     {
-        $locale = $this->getLocale()->getCode();
-        $this->catalogContext->setLocaleCode($locale);
-
-        $this->warningMessages  = null;
-        $this->commonAttributes = null;
-
-        $commonAttributes = $this->getCommonAttributes();
-
-        $this->values = new ArrayCollection();
-        foreach ($commonAttributes as $attribute) {
-            $this->addValues($attribute, $this->getLocale());
-        }
-    }
-
-    /**
-     * Initializes self::commonAtributes with values from the repository
-     * Attribute is not available for mass editing if:
-     *   - it is an identifier
-     *   - it is unique
-     *   - without value AND not link to family
-     *   - is not common to every products
-     *
-     * @return array
-     */
-    public function getCommonAttributes()
-    {
-        if (null === $this->commonAttributes) {
-            $locale   = $this->getLocale()->getCode();
-            $products = $this->objects;
-
-            $this->commonAttributes = $this->generateCommonAttributes($products, $locale);
-        }
-
-        return $this->commonAttributes;
-    }
-
-    /**
-     * Generate common attributes
-     * @param array  $products
-     * @param string $locale
-     *
-     * @return AttributeInterface[]
-     */
-    protected function generateCommonAttributes(array $products, $locale)
-    {
-        $commonAttributes = $this->massActionManager->findCommonAttributes($products);
-
-        foreach ($commonAttributes as $attribute) {
-            $attribute->setLocale($locale);
-            $attribute->getGroup()->setLocale($locale);
-        }
-
-        $commonAttributes = $this->massActionManager->filterLocaleSpecificAttributes(
-            $commonAttributes,
-            $locale
+        return addslashes(
+            json_encode(
+                [
+                    'filters' => $this->getFilters(),
+                    'actions' => $this->getActions()
+                ]
+            )
         );
-
-        $commonAttributes = $this->massActionManager->filterAttributesComingFromVariant(
-            $commonAttributes,
-            $products
-        );
-
-        return $commonAttributes;
-    }
-
-    /**
-     * Get warning messages
-     *
-     * @return string[]
-     */
-    public function getWarningMessages()
-    {
-        if (null === $this->warningMessages) {
-            $this->warningMessages = $this->generateWarningMessages($this->objects);
-        }
-
-        return $this->warningMessages;
-    }
-
-    /**
-     * Get warning messages to display during the mass edit action
-     * @param ProductInterface[] $products
-     *
-     * @return string[]
-     */
-    protected function generateWarningMessages(array $products)
-    {
-        $messages = [];
-
-        $variantAttrCodes = $this->massActionManager->getCommonAttributeCodesInVariant($products);
-        $rootMessageKey = 'pim_enrich.mass_edit_action.edit-common-attributes';
-        if (count($variantAttrCodes) > 0) {
-            $messages[] = [
-                'key'     => $rootMessageKey.'.truncated_by_variant_attribute.warning',
-                'options' => ['%attributes%' => implode(', ', $variantAttrCodes)]
-            ];
-        }
-
-        if (count($this->getCommonAttributes()) < 1) {
-            $messages[] = [
-                'key' => $rootMessageKey.'.no_attribute.warning',
-                'options' => []
-            ];
-        }
-
-        return $messages;
     }
 
     /**
      * {@inheritdoc}
      */
-    protected function doPerform(ProductInterface $product)
+    public function getBatchJobCode()
     {
-        $this->setProductValues($product);
-    }
-
-    /**
-     * Set product values with the one stored inside $this->values
-     *
-     * @param ProductInterface $product
-     */
-    protected function setProductValues(ProductInterface $product)
-    {
-        foreach ($this->values as $value) {
-            $rawData = $this->normalizer->normalize($value->getData(), 'json', ['entity' => 'product']);
-            // if the value is localizable, let's use the locale the user has chosen in the form
-            $locale = null !== $value->getLocale() ? $this->getLocale()->getCode() : null;
-            $this->productUpdater->setData(
-                $product,
-                $value->getAttribute()->getCode(),
-                $rawData,
-                ['locale' => $locale, 'scope' => $value->getScope()]
-            );
-        }
-    }
-
-    /**
-     * Add all the values required by the given attribute
-     *
-     * @param AttributeInterface $attribute
-     * @param LocaleInterface    $locale
-     */
-    protected function addValues(AttributeInterface $attribute, $locale)
-    {
-        if ($attribute->isScopable()) {
-            foreach ($locale->getChannels() as $channel) {
-                $key = $attribute->getCode() . '_' . $channel->getCode();
-                $value = $this->productBuilder->createProductValue(
-                    $attribute,
-                    $locale->getCode(),
-                    $channel->getCode()
-                );
-
-                $this->productBuilder->addMissingPrices($value);
-                $this->values[$key] = $value;
-            }
-        } else {
-            $value = $this->productBuilder->createProductValue(
-                $attribute,
-                $locale->getCode()
-            );
-
-            $this->productBuilder->addMissingPrices($value);
-            $this->values[$attribute->getCode()] = $value;
-        }
+        return 'update_product_value';
     }
 
     /**
      * {@inheritdoc}
      */
-    public function getAlias()
+    public function getItemsName()
     {
-        return 'edit-common-attributes';
+        return 'product';
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function getFormOptions()
+    {
+        return [];
     }
 }
