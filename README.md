@@ -14,7 +14,7 @@ this repository and submit a pull request.
 |:----------------:|:----------:|:----------:|
 | [![Build status][Master image]][Master] | [![Build status][1.3 image]][1.3] | [![Build status][1.2 image]][1.2] |
 
-  [Master image]: https://travis-ci.org/akeneo/pim-community-dev.svg?branch=master
+  [Master image]: https://travis-ci.org/akeneo/pim-community-dev.svg
   [Master]: https://travis-ci.org/akeneo/pim-community-dev/tree/master
   [1.3 image]: https://travis-ci.org/akeneo/pim-community-dev.svg?branch=1.3
   [1.3]: https://github.com/akeneo/pim-community-dev/tree/1.3
