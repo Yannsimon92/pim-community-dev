@@ -69,7 +69,7 @@ class MassEditProductStep extends AbstractStep
      *
      * @return $this
      */
-    public function setHandler($handler)
+    public function setHandler(UpdateProductHandler $handler)
     {
         $this->handler = $handler;
 

@@ -2,7 +2,6 @@
 
 namespace Pim\Bundle\EnrichBundle\MassEditAction\Operator;
 
-use JMS\Serializer\Annotation\Exclude;
 use Oro\Bundle\SecurityBundle\SecurityFacade;
 use Pim\Bundle\EnrichBundle\MassEditAction\Operation\MassEditOperationInterface;
 
@@ -13,38 +12,19 @@ use Pim\Bundle\EnrichBundle\MassEditAction\Operation\MassEditOperationInterface;
  * @author    Gildas Quemener <gildas@akeneo.com>
  * @copyright 2013 Akeneo SAS (http://www.akeneo.com)
  * @license   http://opensource.org/licenses/osl-3.0.php  Open Software License (OSL 3.0)
- * @Exclude
  */
-abstract class AbstractMassEditOperator
+abstract class AbstractMassEditOperator implements MassEditOperationInterface, MassEditOperatorInterface
 {
-    /**
-     * @var MassEditOperationInterface $operation
-     * @Exclude
-     */
+    /** @var MassEditOperationInterface $operation */
     protected $operation;
 
-    /**
-     * @var string $operationAlias
-     */
+    /** @var string $operationAlias */
     protected $operationAlias;
 
-    /**
-     * @var SecurityFacade
-     */
+    /** @var SecurityFacade */
     protected $securityFacade;
 
-    /**
-     * The defined operations, indexed by code
-     *
-     * @var MassEditOperationInterface[] $operations
-     * @Exclude
-     */
-
-    /**
-     * The default acls for each configured operation, indexed by code
-     *
-     * @var string[] $acls
-     */
+    /** @var string[] $acls The default acls for each configured operation, indexed by code */
     protected $acls = [];
 
     /**
@@ -56,13 +36,7 @@ abstract class AbstractMassEditOperator
     }
 
     /**
-     * Register a batch operation into the operator
-     *
-     * @param string                     $alias
-     * @param MassEditOperationInterface $operation
-     * @param string                     $acl
-     *
-     * @throws \InvalidArgumentException
+     * {@inheritdoc}
      */
     public function registerMassEditAction($alias, MassEditOperationInterface $operation, $acl = null)
     {
@@ -76,11 +50,7 @@ abstract class AbstractMassEditOperator
     }
 
     /**
-     * Get the operation choices to present in the batch operator form
-     *
-     * TODO: Move to registry
-     *
-     * @return array
+     * {@inheritdoc}
      */
     public function getOperationChoices()
     {
@@ -96,9 +66,7 @@ abstract class AbstractMassEditOperator
     }
 
     /**
-     * Get the batch operation
-     *
-     * @return MassEditOperationInterface
+     * {@inheritdoc}
      */
     public function getOperation()
     {
@@ -106,14 +74,7 @@ abstract class AbstractMassEditOperator
     }
 
     /**
-     * Set the batch operation alias
-     * (Also set the batch operation if the alias is registered
-     *
-     * @param string $operationAlias
-     *
-     * @throws \InvalidArgumentException when the alias is not registered
-     *
-     * @return AbstractMassEditOperator
+     * {@inheritdoc}
      */
     public function setOperationAlias($operationAlias)
     {
@@ -132,9 +93,7 @@ abstract class AbstractMassEditOperator
     }
 
     /**
-     * Get the operation alias
-     *
-     * @return string
+     * {@inheritdoc}
      */
     public function getOperationAlias()
     {
@@ -142,10 +101,7 @@ abstract class AbstractMassEditOperator
     }
 
     /**
-     * Returns the name of the operator
-     * Used in the view to generate translation key
-     *
-     * @return string
+     * {@inheritdoc}
      */
     abstract public function getName();
 
